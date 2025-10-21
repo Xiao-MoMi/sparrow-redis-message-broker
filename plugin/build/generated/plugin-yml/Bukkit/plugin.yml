@@ -1,0 +1,8 @@
+name: SparrowRedisMessageBroker
+version: 0.0.1
+main: net.momirealms.sparrow.redis.messagebroker.plugin.SparrowRedisMessageBrokerPlugin
+load: POSTWORLD
+authors:
+  - XiaoMoMi
+api-version: "1.20"
+folia-supported: true
