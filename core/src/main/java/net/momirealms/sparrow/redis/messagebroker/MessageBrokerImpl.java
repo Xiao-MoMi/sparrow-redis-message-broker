@@ -1,6 +1,8 @@
 package net.momirealms.sparrow.redis.messagebroker;
 
 import io.netty.buffer.ByteBuf;
+import io.netty.buffer.ByteBufAllocator;
+import io.netty.buffer.PooledByteBufAllocator;
 import io.netty.buffer.Unpooled;
 import net.momirealms.sparrow.redis.messagebroker.connection.RedisConnection;
 import net.momirealms.sparrow.redis.messagebroker.registry.RedisMessageRegistry;
@@ -9,6 +11,7 @@ import net.momirealms.sparrow.redis.messagebroker.util.ByteBufHelper;
 import net.momirealms.sparrow.redis.messagebroker.util.SparrowByteBuf;
 
 final class MessageBrokerImpl implements MessageBroker {
+    private final ByteBufAllocator allocator = PooledByteBufAllocator.DEFAULT;
     private final byte[] channel;
     private final RedisMessageRegistry registry;
     private final RedisConnection connection;
@@ -44,10 +47,20 @@ final class MessageBrokerImpl implements MessageBroker {
         if (registered == null) {
             throw new IllegalArgumentException("Message with id " + message.id() + " does not exist");
         }
-        ByteBuf buf = Unpooled.buffer();
-        ByteBufHelper.writeCompactInt(buf, registered.id());
-        registered.codec().encode(new SparrowByteBuf(buf), message);
-        return buf.array();
+        ByteBuf buf = null;
+        try {
+            buf = this.allocator.buffer(32);
+            ByteBufHelper.writeCompactInt(buf, registered.id());
+            registered.codec().encode(new SparrowByteBuf(buf), message);
+
+            byte[] result = new byte[buf.readableBytes()];
+            buf.getBytes(buf.readerIndex(), result);
+            return result;
+        } finally {
+            if (buf != null) {
+                buf.release();
+            }
+        }
     }
 
     @Override

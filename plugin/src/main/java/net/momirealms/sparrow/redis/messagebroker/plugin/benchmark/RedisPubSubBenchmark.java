@@ -8,6 +8,7 @@ import java.nio.charset.StandardCharsets;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicInteger;
+import java.util.concurrent.atomic.AtomicLong;
 
 public class RedisPubSubBenchmark {
     private final RedisConnection connection;
@@ -76,6 +77,9 @@ public class RedisPubSubBenchmark {
 
         // 用于统计的原子变量
         AtomicInteger messagesReceived = new AtomicInteger(0);
+        AtomicLong totalPublishTime = new AtomicLong(0);
+        AtomicLong maxPublishTime = new AtomicLong(0);
+        AtomicLong minPublishTime = new AtomicLong(Long.MAX_VALUE);
 
         CountDownLatch completionLatch = new CountDownLatch(config.getTotalMessages());
 
@@ -101,7 +105,14 @@ public class RedisPubSubBenchmark {
 
             // 发布消息（在同一个线程中顺序执行）
             for (int i = 0; i < config.getTotalMessages(); i++) {
+                long publishStartTime = System.nanoTime();
+
                 this.connection.publish(channel, this.broker.encode(config.getMessage()));
+
+                long publishTime = System.nanoTime() - publishStartTime;
+                totalPublishTime.addAndGet(publishTime);
+                maxPublishTime.set(Math.max(maxPublishTime.get(), publishTime));
+                minPublishTime.set(Math.min(minPublishTime.get(), publishTime));
 
                 // 进度显示
                 if ((i + 1) % 10000 == 0) {
@@ -119,6 +130,13 @@ public class RedisPubSubBenchmark {
             long endTime = System.currentTimeMillis();
             long totalTime = endTime - startTime;
 
+            // 计算发布耗时统计
+            long totalMessages = config.getTotalMessages();
+            long avgPublishTimeNs = totalPublishTime.get() / totalMessages;
+            long avgPublishTimeMs = avgPublishTimeNs / 1_000_000;
+            long maxPublishTimeMs = maxPublishTime.get() / 1_000_000;
+            long minPublishTimeMs = minPublishTime.get() == Long.MAX_VALUE ? 0 : minPublishTime.get() / 1_000_000;
+
             // 计算结果
             long actualReceived = messagesReceived.get();
             long messagesPerSecond = (actualReceived * 1000L) / Math.max(1, totalTime);
@@ -128,6 +146,11 @@ public class RedisPubSubBenchmark {
             this.logger.info("  Messages sent: " + config.getTotalMessages());
             this.logger.info("  Messages received: " + actualReceived);
             this.logger.info("  Throughput: " + messagesPerSecond + " msg/sec");
+            this.logger.info("  Publish time statistics:");
+            this.logger.info("    Average: " + avgPublishTimeMs + " ms (" + avgPublishTimeNs + " ns)");
+            this.logger.info("    Max: " + maxPublishTimeMs + " ms (" + maxPublishTime.get() + " ns)");
+            this.logger.info("    Min: " + minPublishTimeMs + " ms (" + (minPublishTime.get() == Long.MAX_VALUE ? 0 : minPublishTime.get()) + " ns)");
+            this.logger.info("    Total publish time: " + (totalPublishTime.get() / 1_000_000) + " ms");
         } catch (Exception e) {
             this.logger.error("Benchmark execution failed", e);
             throw new RuntimeException("Benchmark execution failed", e);
