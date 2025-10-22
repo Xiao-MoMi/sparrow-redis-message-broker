@@ -47,15 +47,22 @@ final class MessageBrokerImpl implements MessageBroker {
         if (registered == null) {
             throw new IllegalArgumentException("Message with id " + message.id() + " does not exist");
         }
+
         ByteBuf buf = null;
         try {
-            buf = this.allocator.buffer(32);
+            buf = this.allocator.buffer(message.estimateSize());
+
             ByteBufHelper.writeCompactInt(buf, registered.id());
             registered.codec().encode(new SparrowByteBuf(buf), message);
 
-            byte[] result = new byte[buf.readableBytes()];
-            buf.getBytes(buf.readerIndex(), result);
-            return result;
+            // 直接转换为字节数组，避免额外的内存拷贝
+            if (buf.hasArray() && buf.arrayOffset() == 0 && buf.readableBytes() == buf.array().length) {
+                return buf.array();
+            } else {
+                byte[] result = new byte[buf.readableBytes()];
+                buf.getBytes(buf.readerIndex(), result);
+                return result;
+            }
         } finally {
             if (buf != null) {
                 buf.release();

@@ -15,12 +15,12 @@ public abstract class AbstractDefaultRedisConnection implements RedisConnection 
     protected final StatefulRedisConnection<byte[], byte[]> publishConnection;
     protected final RedisAsyncCommands<byte[], byte[]> asyncPublishCmds;
 
-    public AbstractDefaultRedisConnection(String redisUri, Logger logger) {
+    public AbstractDefaultRedisConnection(String redisUri, int queueSize, Logger logger) {
         this.redisClient = RedisClient.create(redisUri);
         ClientOptions options = ClientOptions.builder()
                 .autoReconnect(true)
                 .suspendReconnectOnProtocolFailure(false)
-                .requestQueueSize(100_000)
+                .requestQueueSize(queueSize)
                 .disconnectedBehavior(ClientOptions.DisconnectedBehavior.ACCEPT_COMMANDS)
                 .build();
         this.redisClient.setOptions(options);

@@ -17,8 +17,8 @@ public class PubSubRedisConnection extends AbstractDefaultRedisConnection {
     private final RedisPubSubCommands<byte[], byte[]> syncSubscribeCmds;
     private final Map<String, Consumer<byte[]>> channelListeners;
 
-    public PubSubRedisConnection(String redisUri, Logger logger) {
-        super(redisUri, logger);
+    public PubSubRedisConnection(String redisUri, int queueSize, Logger logger) {
+        super(redisUri, queueSize, logger);
         this.subscribeConnection = super.redisClient.connectPubSub(new ByteArrayCodec());
         this.syncSubscribeCmds = this.subscribeConnection.sync();
         this.channelListeners = new ConcurrentHashMap<>();

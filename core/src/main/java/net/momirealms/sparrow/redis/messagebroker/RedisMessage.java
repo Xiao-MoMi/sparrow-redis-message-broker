@@ -16,6 +16,10 @@ public interface RedisMessage {
 
     void handle();
 
+    default int estimateSize() {
+        return 16;
+    }
+
     default Executor executor() {
         return MessageExecutors.SYNC;
     }

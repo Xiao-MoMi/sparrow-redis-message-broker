@@ -39,7 +39,7 @@ public class SparrowRedisMessageBrokerPlugin extends JavaPlugin {
         String redisUri = yaml.getString("uri");
         this.messageBroker = MessageBroker.builder()
                 .channel("sparrow:test".getBytes(StandardCharsets.UTF_8))
-                .connection(new PubSubRedisConnection(redisUri, new JavaPluginLogger(this)))
+                .connection(new PubSubRedisConnection(redisUri, 100_000, new JavaPluginLogger(this)))
                 .build();
         this.messageBroker.registry().register(HelloMessage.ID, HelloMessage.CODEC);
         this.messageBroker.registry().register(PlayerInfoMessage.ID, PlayerInfoMessage.CODEC);
@@ -69,7 +69,7 @@ public class SparrowRedisMessageBrokerPlugin extends JavaPlugin {
         new RedisPubSubBenchmark(this.messageBroker, logger).runBenchmark(PubSubBenchmarkConfig.builder()
                 .message(new HelloMessage("Hello World!"))
                 .totalMessages(100_000)
-                .warmupMessages(30_000)
+                .warmupMessages(100_000)
                 .build());
         this.logBenchMark(logger, "Player Info");
         new RedisPubSubBenchmark(this.messageBroker, logger).runBenchmark(PubSubBenchmarkConfig.builder()
