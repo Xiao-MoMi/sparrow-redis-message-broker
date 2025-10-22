@@ -20,7 +20,7 @@ public abstract class AbstractDefaultRedisConnection implements RedisConnection 
         ClientOptions options = ClientOptions.builder()
                 .autoReconnect(true)
                 .suspendReconnectOnProtocolFailure(false)
-                .requestQueueSize(1_000)
+                .requestQueueSize(100_000)
                 .disconnectedBehavior(ClientOptions.DisconnectedBehavior.ACCEPT_COMMANDS)
                 .build();
         this.redisClient.setOptions(options);

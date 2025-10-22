@@ -22,7 +22,7 @@ public final class DefaultMessageRegistry implements RedisMessageRegistry {
 
     @SuppressWarnings({"unchecked", "rawtypes"})
     @Override
-    public <B extends ByteBuf, M extends RedisMessage> RegisteredRedisMessage<B, M> register(@NotNull MessageIdentifier id, @NotNull MessageCodec<B, M> codec) {
+    public <B extends ByteBuf, M extends RedisMessage> void register(@NotNull MessageIdentifier id, @NotNull MessageCodec<B, M> codec) {
         if (this.byKey.containsKey(id)) {
             throw new IllegalStateException("Message already registered: " + id);
         }
@@ -30,7 +30,6 @@ public final class DefaultMessageRegistry implements RedisMessageRegistry {
         RegisteredRedisMessage<B, M> type = new RegisteredRedisMessage<>(this.byId.size(), id, codec);
         this.byKey.put(id, (RegisteredRedisMessage) type);
         this.byId.add((RegisteredRedisMessage) type);
-        return type;
     }
 
     @Override

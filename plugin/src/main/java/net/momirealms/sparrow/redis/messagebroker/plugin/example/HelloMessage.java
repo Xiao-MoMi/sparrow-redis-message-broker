@@ -1,13 +1,16 @@
 package net.momirealms.sparrow.redis.messagebroker.plugin.example;
 
-import net.momirealms.sparrow.redis.messagebroker.AsyncRedisMessage;
 import net.momirealms.sparrow.redis.messagebroker.MessageIdentifier;
+import net.momirealms.sparrow.redis.messagebroker.RedisMessage;
 import net.momirealms.sparrow.redis.messagebroker.codec.MessageCodec;
+import net.momirealms.sparrow.redis.messagebroker.executors.MessageExecutors;
 import net.momirealms.sparrow.redis.messagebroker.util.SparrowByteBuf;
 import org.jetbrains.annotations.NotNull;
 
-public class HelloMessage implements AsyncRedisMessage {
-    public static final MessageCodec<SparrowByteBuf, HelloMessage> CODEC = MessageCodec.ofMember(HelloMessage::writeTo, HelloMessage::new);
+import java.util.concurrent.Executor;
+
+public class HelloMessage implements RedisMessage {
+    public static final MessageCodec<SparrowByteBuf, HelloMessage> CODEC = MessageCodec.ofMember(HelloMessage::write, HelloMessage::new);
     public static final MessageIdentifier ID = MessageIdentifier.of("sparrow", "hello");
     private final String message;
 
@@ -19,7 +22,7 @@ public class HelloMessage implements AsyncRedisMessage {
         this.message = buf.readUtf8();
     }
 
-    private void writeTo(SparrowByteBuf buf) {
+    private void write(SparrowByteBuf buf) {
         buf.writeUtf8(this.message);
     }
 
@@ -31,5 +34,10 @@ public class HelloMessage implements AsyncRedisMessage {
     @Override
     public void handle() {
         System.out.println("HelloMessage: " + this.message);
+    }
+
+    @Override
+    public Executor executor() {
+        return MessageExecutors.VIRTUAL;
     }
 }

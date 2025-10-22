@@ -28,8 +28,6 @@ public class JavaPluginLogger implements Logger {
 
     @Override
     public void debug(String msg) {
-        if (this.plugin.devMode) {
-            this.plugin.getLogger().log(Level.INFO, msg);
-        }
+        this.plugin.getLogger().log(Level.INFO, msg);
     }
 }

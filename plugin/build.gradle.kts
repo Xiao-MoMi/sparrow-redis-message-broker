@@ -1,6 +1,6 @@
 plugins {
     id("com.gradleup.shadow") version "9.2.2"
-    id("de.eldoria.plugin-yml.bukkit") version "0.7.1"
+    id("de.eldoria.plugin-yml.paper") version "0.7.1"
 }
 
 repositories {
@@ -11,15 +11,19 @@ repositories {
 dependencies {
     implementation(project(":core"))
     compileOnly("io.papermc.paper:paper-api:1.21.10-R0.1-SNAPSHOT")
+    compileOnly("io.lettuce:lettuce-core:6.8.1.RELEASE")
 }
 
-bukkit {
+paper {
     load = net.minecrell.pluginyml.bukkit.BukkitPluginDescription.PluginLoadOrder.POSTWORLD
     main = "net.momirealms.sparrow.redis.messagebroker.plugin.SparrowRedisMessageBrokerPlugin"
+    bootstrapper = "net.momirealms.sparrow.redis.messagebroker.plugin.SparrowRedisMessageBrokerBootstrap"
+    loader = "net.momirealms.sparrow.redis.messagebroker.plugin.SparrowRedisMessageBrokerLoader"
     version = rootProject.properties["project_version"] as String
     name = "SparrowRedisMessageBroker"
     apiVersion = "1.20"
     authors = listOf("XiaoMoMi")
+    description = "This plugin is designed solely for testing purposes. You should shade this library into your own plugin instead of using this one directly."
     foliaSupported = true
 }
 

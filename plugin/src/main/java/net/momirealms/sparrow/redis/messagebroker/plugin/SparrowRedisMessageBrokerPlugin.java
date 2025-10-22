@@ -2,8 +2,9 @@ package net.momirealms.sparrow.redis.messagebroker.plugin;
 
 import net.momirealms.sparrow.redis.messagebroker.MessageBroker;
 import net.momirealms.sparrow.redis.messagebroker.connection.PubSubRedisConnection;
+import net.momirealms.sparrow.redis.messagebroker.plugin.benchmark.PubSubBenchmarkConfig;
+import net.momirealms.sparrow.redis.messagebroker.plugin.benchmark.RedisPubSubBenchmark;
 import net.momirealms.sparrow.redis.messagebroker.plugin.example.HelloMessage;
-import org.bukkit.Bukkit;
 import org.bukkit.configuration.file.YamlConfiguration;
 import org.bukkit.plugin.java.JavaPlugin;
 
@@ -11,24 +12,34 @@ import java.io.File;
 import java.nio.charset.StandardCharsets;
 
 public class SparrowRedisMessageBrokerPlugin extends JavaPlugin {
+    private static SparrowRedisMessageBrokerPlugin instance;
+    private final SparrowRedisMessageBrokerBootstrap bootstrap;
     private MessageBroker messageBroker;
-    protected boolean devMode;
+
+    public SparrowRedisMessageBrokerPlugin(SparrowRedisMessageBrokerBootstrap bootstrap) {
+        this.bootstrap = bootstrap;
+        instance = this;
+    }
+
+    public static SparrowRedisMessageBrokerPlugin instance() {
+        return instance;
+    }
+
+    public SparrowRedisMessageBrokerBootstrap bootstrap() {
+        return bootstrap;
+    }
 
     @Override
     public void onEnable() {
-        if ("true".equals(PluginProperties.getValue("dev_mode"))) {
-            this.devMode = true;
-            YamlConfiguration yaml = getOrSaveConfig();
-            String redisUri = yaml.getString("uri");
-            this.messageBroker = MessageBroker.builder()
-                    .channel("sparrow:test".getBytes(StandardCharsets.UTF_8))
-                    .connection(new PubSubRedisConnection(redisUri, new JavaPluginLogger(this)))
-                    .build();
-            this.messageBroker.registry().register(HelloMessage.ID, HelloMessage.CODEC);
-            this.messageBroker.subscribe();
-            this.getLogger().info("Connected to Redis");
-            Bukkit.getScheduler().runTaskTimerAsynchronously(this, () -> this.messageBroker.publish(new HelloMessage("Hello World!")), 10L, 10L);
-        }
+        YamlConfiguration yaml = getOrSaveConfig();
+        String redisUri = yaml.getString("uri");
+        this.messageBroker = MessageBroker.builder()
+                .channel("sparrow:test".getBytes(StandardCharsets.UTF_8))
+                .connection(new PubSubRedisConnection(redisUri, new JavaPluginLogger(this)))
+                .build();
+        this.messageBroker.registry().register(HelloMessage.ID, HelloMessage.CODEC);
+        this.messageBroker.subscribe();
+        this.getLogger().info("Connected to Redis");
     }
 
     @Override
@@ -45,5 +56,15 @@ public class SparrowRedisMessageBrokerPlugin extends JavaPlugin {
             this.saveResource("redis.yml", false);
         }
         return YamlConfiguration.loadConfiguration(configFile);
+    }
+
+    public void startBenchMark() {
+        PubSubBenchmarkConfig config = PubSubBenchmarkConfig.builder()
+                .messageSize(1024)
+                .totalMessages(100_000)
+                .warmupMessages(10_000)
+                .build();
+        RedisPubSubBenchmark benchmark = new RedisPubSubBenchmark(this.messageBroker.connection(), new JavaPluginLogger(this));
+        benchmark.runBenchmark(config);
     }
 }
