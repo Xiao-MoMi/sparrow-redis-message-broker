@@ -1,6 +1,7 @@
 package net.momirealms.sparrow.redis.messagebroker.plugin.benchmark;
 
 import net.momirealms.sparrow.redis.messagebroker.Logger;
+import net.momirealms.sparrow.redis.messagebroker.MessageBroker;
 import net.momirealms.sparrow.redis.messagebroker.connection.RedisConnection;
 
 import java.nio.charset.StandardCharsets;
@@ -10,31 +11,35 @@ import java.util.concurrent.atomic.AtomicInteger;
 
 public class RedisPubSubBenchmark {
     private final RedisConnection connection;
+    private final MessageBroker broker;
     private final Logger logger;
 
-    public RedisPubSubBenchmark(RedisConnection connection, Logger logger) {
-        this.connection = connection;
+    public RedisPubSubBenchmark(MessageBroker broker, Logger logger) {
+        this.connection = broker.connection();
+        this.broker = broker;
         this.logger = logger;
     }
 
     public void runBenchmark(PubSubBenchmarkConfig config) {
         this.logger.info("Starting Redis PubSub benchmark (Single Thread)...");
+
+        byte[] message = this.broker.encode(config.getMessage());
         this.logger.info("Configuration: " +
                 config.getTotalMessages() + " messages, " +
-                config.getMessageSize() + " bytes each");
+                message.length + " bytes each");
 
         // 预热
-        this.warmup(config);
+        this.warmup(config, message);
 
         // 执行基准测试
         this.executeBenchmarkSingleThread(config);
     }
 
-    private void warmup(PubSubBenchmarkConfig config) {
+    private void warmup(PubSubBenchmarkConfig config, byte[] messageBytes) {
         if (config.getWarmupMessages() <= 0) return;
 
         this.logger.info("Warming up with " + config.getWarmupMessages() + " messages...");
-        byte[] warmupMessage = generateMessage(config.getMessageSize());
+
         byte[] channel = config.getTestChannel().getBytes(StandardCharsets.UTF_8);
 
         CountDownLatch warmupLatch = new CountDownLatch(config.getWarmupMessages());
@@ -49,7 +54,7 @@ public class RedisPubSubBenchmark {
         try {
             // 发布预热消息
             for (int i = 0; i < config.getWarmupMessages(); i++) {
-                this.connection.publish(channel, warmupMessage);
+                this.connection.publish(channel, messageBytes);
             }
 
             // 等待所有消息被接收
@@ -67,7 +72,6 @@ public class RedisPubSubBenchmark {
     }
 
     private void executeBenchmarkSingleThread(PubSubBenchmarkConfig config) {
-        byte[] testMessage = generateMessage(config.getMessageSize());
         byte[] channel = config.getTestChannel().getBytes(StandardCharsets.UTF_8);
 
         // 用于统计的原子变量
@@ -97,17 +101,12 @@ public class RedisPubSubBenchmark {
 
             // 发布消息（在同一个线程中顺序执行）
             for (int i = 0; i < config.getTotalMessages(); i++) {
-                this.connection.publish(channel, testMessage);
+                this.connection.publish(channel, this.broker.encode(config.getMessage()));
 
                 // 进度显示
                 if ((i + 1) % 10000 == 0) {
                     this.logger.info("Progress: " + (i + 1) + "/" + config.getTotalMessages() + " messages sent");
                 }
-
-                // 可选：添加小延迟避免过载
-                // if ((i + 1) % 1000 == 0) {
-                //     Thread.sleep(1);
-                // }
             }
 
             this.logger.info("All messages published, waiting for reception...");
@@ -136,14 +135,5 @@ public class RedisPubSubBenchmark {
             // 清理
             this.connection.unsubscribe(channel);
         }
-    }
-
-    private byte[] generateMessage(int size) {
-        byte[] message = new byte[size];
-        // 填充一些测试数据
-        for (int i = 0; i < message.length; i++) {
-            message[i] = (byte) ('A' + (i % 26));
-        }
-        return message;
     }
 }

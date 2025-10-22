@@ -60,11 +60,11 @@ public class SparrowRedisMessageBrokerPlugin extends JavaPlugin {
 
     public void startBenchMark() {
         PubSubBenchmarkConfig config = PubSubBenchmarkConfig.builder()
-                .messageSize(1024)
+                .message(new HelloMessage("Hello World"))
                 .totalMessages(100_000)
                 .warmupMessages(10_000)
                 .build();
-        RedisPubSubBenchmark benchmark = new RedisPubSubBenchmark(this.messageBroker.connection(), new JavaPluginLogger(this));
+        RedisPubSubBenchmark benchmark = new RedisPubSubBenchmark(this.messageBroker, new JavaPluginLogger(this));
         benchmark.runBenchmark(config);
     }
 }

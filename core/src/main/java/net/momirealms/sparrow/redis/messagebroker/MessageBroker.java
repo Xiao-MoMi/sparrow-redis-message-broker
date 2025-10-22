@@ -19,6 +19,8 @@ public interface MessageBroker {
         return new Builder();
     }
 
+    byte[] encode(RedisMessage message);
+
     void unsubscribe();
 
     void subscribe();

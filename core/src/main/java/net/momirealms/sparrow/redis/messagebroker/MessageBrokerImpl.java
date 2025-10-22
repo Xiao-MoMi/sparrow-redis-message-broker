@@ -32,17 +32,22 @@ final class MessageBrokerImpl implements MessageBroker {
     @Override
     public void publish(RedisMessage message) {
         if (this.connection.isOpen()) {
-            RegisteredRedisMessage<ByteBuf, RedisMessage> registered = this.registry.byId(message.id());
-            if (registered == null) {
-                throw new IllegalArgumentException("Message with id " + message.id() + " does not exist");
-            }
-            ByteBuf buf = Unpooled.buffer();
-            ByteBufHelper.writeCompactInt(buf, registered.id());
-            registered.codec().encode(new SparrowByteBuf(buf), message);
-            this.connection.publish(this.channel, buf.array());
+            this.connection.publish(this.channel, encode(message));
             return;
         }
         throw new IllegalStateException("Redis is not connected");
+    }
+
+    @Override
+    public byte[] encode(RedisMessage message) {
+        RegisteredRedisMessage<ByteBuf, RedisMessage> registered = this.registry.byId(message.id());
+        if (registered == null) {
+            throw new IllegalArgumentException("Message with id " + message.id() + " does not exist");
+        }
+        ByteBuf buf = Unpooled.buffer();
+        ByteBufHelper.writeCompactInt(buf, registered.id());
+        registered.codec().encode(new SparrowByteBuf(buf), message);
+        return buf.array();
     }
 
     @Override
