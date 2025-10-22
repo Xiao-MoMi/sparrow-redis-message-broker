@@ -2,6 +2,7 @@ package net.momirealms.sparrow.redis.messagebroker.plugin.benchmark;
 
 import net.momirealms.sparrow.redis.messagebroker.Logger;
 import net.momirealms.sparrow.redis.messagebroker.MessageBroker;
+import net.momirealms.sparrow.redis.messagebroker.RedisMessage;
 import net.momirealms.sparrow.redis.messagebroker.connection.RedisConnection;
 
 import java.nio.charset.StandardCharsets;
@@ -87,11 +88,14 @@ public class RedisPubSubBenchmark {
 
         // 启动订阅者（在同一个线程中）
         this.connection.subscribe(channel, message -> {
+            // 解码
+            this.broker.decode(message);
+
             messagesReceived.incrementAndGet();
             completionLatch.countDown();
 
             // 进度显示
-            if (messagesReceived.get() % 10000 == 0) {
+            if (messagesReceived.get() % 20000 == 0) {
                 this.logger.info("Progress: " + messagesReceived.get() + "/" + config.getTotalMessages() + " messages received");
             }
         });
@@ -115,7 +119,7 @@ public class RedisPubSubBenchmark {
                 minPublishTime.set(Math.min(minPublishTime.get(), publishTime));
 
                 // 进度显示
-                if ((i + 1) % 10000 == 0) {
+                if ((i + 1) % 20000 == 0) {
                     this.logger.info("Progress: " + (i + 1) + "/" + config.getTotalMessages() + " messages sent");
                 }
             }

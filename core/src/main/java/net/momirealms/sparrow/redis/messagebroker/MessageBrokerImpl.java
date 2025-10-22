@@ -64,6 +64,17 @@ final class MessageBrokerImpl implements MessageBroker {
     }
 
     @Override
+    public RedisMessage decode(byte[] bytes) {
+        ByteBuf buf = Unpooled.wrappedBuffer(bytes);
+        int id = ByteBufHelper.readCompactInt(buf);
+        RegisteredRedisMessage<ByteBuf, RedisMessage> registered = this.registry.byId(id);
+        if (registered == null) {
+            return null;
+        }
+        return registered.codec().decode(new SparrowByteBuf(buf));
+    }
+
+    @Override
     public void unsubscribe() {
         if (this.connection.isOpen()) {
             this.connection.unsubscribe(this.channel);
@@ -74,14 +85,10 @@ final class MessageBrokerImpl implements MessageBroker {
     public void subscribe() {
         if (this.connection.isOpen()) {
             this.connection.subscribe(this.channel, (byte[] message) -> {
-                ByteBuf buf = Unpooled.wrappedBuffer(message);
-                int id = ByteBufHelper.readCompactInt(buf);
-                RegisteredRedisMessage<ByteBuf, RedisMessage> registered = this.registry.byId(id);
-                if (registered == null) {
-                    return;
+                RedisMessage decode = decode(message);
+                if (decode != null) {
+                    decode.executor().execute(decode::handle);
                 }
-                RedisMessage redisMessage = registered.codec().decode(new SparrowByteBuf(buf));
-                redisMessage.executor().execute(redisMessage::handle);
             });
             return;
         }

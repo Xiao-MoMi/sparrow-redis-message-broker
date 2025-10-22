@@ -21,6 +21,8 @@ public interface MessageBroker {
 
     byte[] encode(RedisMessage message);
 
+    RedisMessage decode(byte[] bytes);
+
     void unsubscribe();
 
     void subscribe();

@@ -33,7 +33,6 @@ public class HelloMessage implements RedisMessage {
 
     @Override
     public void handle() {
-        System.out.println("HelloMessage: " + this.message);
     }
 
     @Override

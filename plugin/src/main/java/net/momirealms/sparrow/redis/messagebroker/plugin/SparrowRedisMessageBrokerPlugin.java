@@ -1,15 +1,19 @@
 package net.momirealms.sparrow.redis.messagebroker.plugin;
 
+import net.momirealms.sparrow.redis.messagebroker.Logger;
 import net.momirealms.sparrow.redis.messagebroker.MessageBroker;
 import net.momirealms.sparrow.redis.messagebroker.connection.PubSubRedisConnection;
 import net.momirealms.sparrow.redis.messagebroker.plugin.benchmark.PubSubBenchmarkConfig;
 import net.momirealms.sparrow.redis.messagebroker.plugin.benchmark.RedisPubSubBenchmark;
 import net.momirealms.sparrow.redis.messagebroker.plugin.example.HelloMessage;
+import net.momirealms.sparrow.redis.messagebroker.plugin.example.PlayerInfoMessage;
 import org.bukkit.configuration.file.YamlConfiguration;
 import org.bukkit.plugin.java.JavaPlugin;
 
 import java.io.File;
 import java.nio.charset.StandardCharsets;
+import java.util.UUID;
+import java.util.concurrent.ThreadLocalRandom;
 
 public class SparrowRedisMessageBrokerPlugin extends JavaPlugin {
     private static SparrowRedisMessageBrokerPlugin instance;
@@ -38,6 +42,7 @@ public class SparrowRedisMessageBrokerPlugin extends JavaPlugin {
                 .connection(new PubSubRedisConnection(redisUri, new JavaPluginLogger(this)))
                 .build();
         this.messageBroker.registry().register(HelloMessage.ID, HelloMessage.CODEC);
+        this.messageBroker.registry().register(PlayerInfoMessage.ID, PlayerInfoMessage.CODEC);
         this.messageBroker.subscribe();
         this.getLogger().info("Connected to Redis");
     }
@@ -59,12 +64,33 @@ public class SparrowRedisMessageBrokerPlugin extends JavaPlugin {
     }
 
     public void startBenchMark() {
-        PubSubBenchmarkConfig config = PubSubBenchmarkConfig.builder()
+        JavaPluginLogger logger = new JavaPluginLogger(this);
+        this.logBenchMark(logger, "Hello World");
+        new RedisPubSubBenchmark(this.messageBroker, logger).runBenchmark(PubSubBenchmarkConfig.builder()
                 .message(new HelloMessage("Hello World!"))
                 .totalMessages(100_000)
-                .warmupMessages(10_000)
-                .build();
-        RedisPubSubBenchmark benchmark = new RedisPubSubBenchmark(this.messageBroker, new JavaPluginLogger(this));
-        benchmark.runBenchmark(config);
+                .warmupMessages(30_000)
+                .build());
+        this.logBenchMark(logger, "Player Info");
+        new RedisPubSubBenchmark(this.messageBroker, logger).runBenchmark(PubSubBenchmarkConfig.builder()
+                .message(new PlayerInfoMessage("XiaoMoMi", UUID.randomUUID(), "survival_world",
+                        getRandomDouble(), getRandomDouble(), getRandomDouble(), getRandomFloat(), getRandomFloat()))
+                .totalMessages(100_000)
+                .warmupMessages(0)
+                .build());
+    }
+
+    private void logBenchMark(Logger logger, String message) {
+        logger.info("");
+        logger.info("");
+        logger.info("=========  BenchMark (" + message + ") =========");
+    }
+
+    private double getRandomDouble() {
+        return ThreadLocalRandom.current().nextDouble();
+    }
+
+    private float getRandomFloat() {
+        return ThreadLocalRandom.current().nextFloat();
     }
 }
