@@ -12,6 +12,7 @@ dependencies {
     compileOnly(libs.lettuce.core)
     compileOnly(libs.jetbrains.annotations)
     compileOnly(libs.guava)
+    compileOnly(libs.caffeine)
 }
 
 tasks.test {

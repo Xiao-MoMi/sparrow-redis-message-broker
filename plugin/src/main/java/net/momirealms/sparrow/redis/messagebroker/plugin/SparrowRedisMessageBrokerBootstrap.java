@@ -26,7 +26,11 @@ public class SparrowRedisMessageBrokerBootstrap implements PluginBootstrap {
                                 }))
                                 .then(Commands.literal("get-online-player-count").then(Commands.argument("server", StringArgumentType.greedyString()).executes(commandContext -> {
                                     String server = commandContext.getArgument("server", String.class);
-                                    SparrowRedisMessageBrokerPlugin.instance().messageBroker().publishTwoWay(new PlayerCountRequestMessage(), server).thenAccept(response -> {
+                                    SparrowRedisMessageBrokerPlugin.instance().messageBroker().publishTwoWay(new PlayerCountRequestMessage(), server).whenComplete((response, t) -> {
+                                        if (t != null) {
+                                            commandContext.getSource().getSender().sendMessage(t.getMessage());
+                                            return;
+                                        }
                                         commandContext.getSource().getSender().sendMessage(Component.text(response.playerCount()));
                                     });
                                     return Command.SINGLE_SUCCESS;

@@ -1,7 +1,9 @@
 package net.momirealms.sparrow.redis.messagebroker;
 
-import com.google.common.cache.Cache;
-import com.google.common.cache.CacheBuilder;
+import com.github.benmanes.caffeine.cache.Cache;
+import com.github.benmanes.caffeine.cache.Caffeine;
+import com.github.benmanes.caffeine.cache.RemovalCause;
+import com.github.benmanes.caffeine.cache.Scheduler;
 import io.netty.buffer.ByteBuf;
 import io.netty.buffer.ByteBufAllocator;
 import io.netty.buffer.PooledByteBufAllocator;
@@ -15,12 +17,11 @@ import net.momirealms.sparrow.redis.messagebroker.registry.RegisteredRedisMessag
 import net.momirealms.sparrow.redis.messagebroker.util.ByteBufHelper;
 import net.momirealms.sparrow.redis.messagebroker.util.SparrowByteBuf;
 
-import java.util.Map;
+import java.time.Instant;
+import java.time.ZoneId;
+import java.time.format.DateTimeFormatter;
 import java.util.Set;
-import java.util.concurrent.CompletableFuture;
-import java.util.concurrent.ConcurrentHashMap;
-import java.util.concurrent.ThreadLocalRandom;
-import java.util.concurrent.TimeUnit;
+import java.util.concurrent.*;
 
 final class MessageBrokerImpl implements MessageBroker {
     private final Logger logger;
@@ -31,9 +32,21 @@ final class MessageBrokerImpl implements MessageBroker {
     private final String serverId;
     private final Set<String> tags;
     private final Cache<Long, TimeStampedFuture<TwoWayResponseMessage>> pendingResponses =
-            CacheBuilder.newBuilder()
-            .expireAfterWrite(1, TimeUnit.MINUTES)
+            Caffeine.newBuilder()
+            .expireAfterWrite(10, TimeUnit.SECONDS)
             .initialCapacity(64)
+            .evictionListener((Long key, TimeStampedFuture<TwoWayResponseMessage> value, RemovalCause cause) -> {
+                if (value == null) return;
+                if (cause == RemovalCause.EXPIRED) {
+                    long time = value.time();
+                    Instant instant = Instant.ofEpochMilli(time);
+                    String formattedTime = DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss.SSS")
+                            .withZone(ZoneId.systemDefault())
+                            .format(instant);
+                    value.future().completeExceptionally(new TimeoutException("Request expired at " + formattedTime));
+                }
+            })
+            .scheduler(Scheduler.systemScheduler())
             .build();
 
     public MessageBrokerImpl(Logger logger, byte[] channel, RedisMessageRegistry registry, RedisConnection connection, String serverId, Set<String> tags) {

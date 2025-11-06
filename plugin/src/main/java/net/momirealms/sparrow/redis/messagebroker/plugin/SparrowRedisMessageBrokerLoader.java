@@ -15,6 +15,7 @@ public class SparrowRedisMessageBrokerLoader implements PluginLoader {
     public void classloader(@NotNull PluginClasspathBuilder classpathBuilder) {
         MavenLibraryResolver resolver = new MavenLibraryResolver();
         resolver.addDependency(new Dependency(new DefaultArtifact("io.lettuce:lettuce-core:6.8.1.RELEASE"), null));
+        resolver.addDependency(new Dependency(new DefaultArtifact("com.github.ben-manes.caffeine:caffeine:3.2.3"), null));
         resolver.addRepository(new RemoteRepository.Builder("aliyun", "default", "https://maven.aliyun.com/repository/public/").build());
         classpathBuilder.addLibrary(resolver);
     }

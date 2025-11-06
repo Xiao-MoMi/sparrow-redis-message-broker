@@ -3,6 +3,7 @@ lettuce = "6.8.1.RELEASE"
 junit = "6.0.0"
 jetbrains-annotations = "26.0.2-1"
 guava = "33.5.0-jre"
+caffeine = "3.2.3"
 
 [libraries]
 lettuce-core = { module = "io.lettuce:lettuce-core", version.ref = "lettuce" }
@@ -10,6 +11,7 @@ junit-bom = { module = "org.junit:junit-bom", version.ref = "junit" }
 junit-jupiter = { module = "org.junit.jupiter:junit-jupiter", version.ref = "junit" }
 jetbrains-annotations = { module = "org.jetbrains:annotations", version.ref = "jetbrains-annotations" }
 guava = { module = "com.google.guava:guava", version.ref = "guava" }
+caffeine = { module = "com.github.ben-manes.caffeine:caffeine", version.ref = "caffeine" }
 
 [bundles]
 test = ["junit-jupiter"]
