@@ -21,7 +21,9 @@ import java.time.Instant;
 import java.time.ZoneId;
 import java.time.format.DateTimeFormatter;
 import java.util.Set;
-import java.util.concurrent.*;
+import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.TimeUnit;
+import java.util.concurrent.TimeoutException;
 
 final class MessageBrokerImpl implements MessageBroker {
     private final Logger logger;
@@ -43,7 +45,7 @@ final class MessageBrokerImpl implements MessageBroker {
                     String formattedTime = DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss.SSS")
                             .withZone(ZoneId.systemDefault())
                             .format(instant);
-                    value.future().completeExceptionally(new TimeoutException("Request expired at " + formattedTime));
+                    value.future().completeExceptionally(new TimeoutException("Request sent at " + formattedTime + " has been expired"));
                 }
             })
             .scheduler(Scheduler.systemScheduler())
