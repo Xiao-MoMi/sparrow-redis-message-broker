@@ -7,6 +7,7 @@ import io.netty.buffer.ByteBufAllocator;
 import io.netty.buffer.PooledByteBufAllocator;
 import io.netty.buffer.Unpooled;
 import net.momirealms.sparrow.redis.messagebroker.connection.RedisConnection;
+import net.momirealms.sparrow.redis.messagebroker.message.OneWayMessage;
 import net.momirealms.sparrow.redis.messagebroker.message.TwoWayRequestMessage;
 import net.momirealms.sparrow.redis.messagebroker.message.TwoWayResponseMessage;
 import net.momirealms.sparrow.redis.messagebroker.registry.RedisMessageRegistry;
@@ -73,9 +74,19 @@ final class MessageBrokerImpl implements MessageBroker {
         throw new IllegalStateException("Redis is not connected");
     }
 
+    @Override
+    public void publishOneWay(OneWayMessage message, String targetServer) {
+        if (this.connection.isOpen()) {
+            message.setTargetServer(targetServer);
+            this.connection.publish(this.channel, encode(message));
+            return;
+        }
+        throw new IllegalStateException("Redis is not connected");
+    }
+
     @SuppressWarnings("unchecked")
     @Override
-    public <R extends TwoWayResponseMessage> CompletableFuture<R> publish(TwoWayRequestMessage<R> message, String targetServer) {
+    public <R extends TwoWayResponseMessage> CompletableFuture<R> publishTwoWay(TwoWayRequestMessage<R> message, String targetServer) {
         if (this.connection.isOpen()) {
             CompletableFuture<TwoWayResponseMessage> future = new CompletableFuture<>();
             TimeStampedFuture<TwoWayResponseMessage> timeStampedFuture = new TimeStampedFuture<>(System.currentTimeMillis(), future);

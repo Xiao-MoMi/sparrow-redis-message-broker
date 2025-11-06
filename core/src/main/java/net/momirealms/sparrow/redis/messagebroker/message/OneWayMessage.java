@@ -11,14 +11,21 @@ import net.momirealms.sparrow.redis.messagebroker.util.SparrowByteBuf;
  * 如果id以#开头，则代表匹配服务器标签
  */
 public abstract class OneWayMessage implements RedisMessage {
-    protected final String targetServer;
+    protected String targetServer;
 
-    protected OneWayMessage(String targetServer) {
-        this.targetServer = targetServer;
+    protected OneWayMessage() {
     }
 
     protected OneWayMessage(SparrowByteBuf buf) {
         this.targetServer = buf.readUtf8();
+    }
+
+    public String targetServer() {
+        return targetServer;
+    }
+
+    public void setTargetServer(String targetServer) {
+        this.targetServer = targetServer;
     }
 
     @Override

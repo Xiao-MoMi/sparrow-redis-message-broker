@@ -1,6 +1,7 @@
 package net.momirealms.sparrow.redis.messagebroker;
 
 import net.momirealms.sparrow.redis.messagebroker.connection.RedisConnection;
+import net.momirealms.sparrow.redis.messagebroker.message.OneWayMessage;
 import net.momirealms.sparrow.redis.messagebroker.message.TwoWayRequestMessage;
 import net.momirealms.sparrow.redis.messagebroker.message.TwoWayResponseMessage;
 import net.momirealms.sparrow.redis.messagebroker.registry.DefaultMessageRegistry;
@@ -24,7 +25,9 @@ public interface MessageBroker {
 
     void publish(RedisMessage message);
 
-    <R extends TwoWayResponseMessage> CompletableFuture<R> publish(TwoWayRequestMessage<R> message, String targetServer);
+    void publishOneWay(OneWayMessage message, String targetServer);
+
+    <R extends TwoWayResponseMessage> CompletableFuture<R> publishTwoWay(TwoWayRequestMessage<R> message, String targetServer);
 
     void response(TwoWayResponseMessage message);
 
