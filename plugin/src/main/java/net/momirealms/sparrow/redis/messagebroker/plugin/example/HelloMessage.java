@@ -1,5 +1,6 @@
 package net.momirealms.sparrow.redis.messagebroker.plugin.example;
 
+import net.momirealms.sparrow.redis.messagebroker.MessageBroker;
 import net.momirealms.sparrow.redis.messagebroker.MessageIdentifier;
 import net.momirealms.sparrow.redis.messagebroker.RedisMessage;
 import net.momirealms.sparrow.redis.messagebroker.codec.MessageCodec;
@@ -27,12 +28,12 @@ public class HelloMessage implements RedisMessage {
     }
 
     @Override
-    public @NotNull MessageIdentifier id() {
+    public @NotNull MessageIdentifier identifier() {
         return ID;
     }
 
     @Override
-    public void handle() {
+    public void handle(MessageBroker broker) {
     }
 
     @Override

@@ -12,9 +12,9 @@ import java.util.concurrent.Executor;
 public interface RedisMessage {
 
     @NotNull
-    MessageIdentifier id();
+    MessageIdentifier identifier();
 
-    void handle();
+    void handle(MessageBroker broker);
 
     default int estimateSize() {
         return 16;

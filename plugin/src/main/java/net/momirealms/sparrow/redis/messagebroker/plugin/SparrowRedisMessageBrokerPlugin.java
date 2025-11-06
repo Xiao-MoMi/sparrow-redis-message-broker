@@ -6,12 +6,15 @@ import net.momirealms.sparrow.redis.messagebroker.connection.PubSubRedisConnecti
 import net.momirealms.sparrow.redis.messagebroker.plugin.benchmark.PubSubBenchmarkConfig;
 import net.momirealms.sparrow.redis.messagebroker.plugin.benchmark.RedisPubSubBenchmark;
 import net.momirealms.sparrow.redis.messagebroker.plugin.example.HelloMessage;
+import net.momirealms.sparrow.redis.messagebroker.plugin.example.PlayerCountRequestMessage;
+import net.momirealms.sparrow.redis.messagebroker.plugin.example.PlayerCountResponseMessage;
 import net.momirealms.sparrow.redis.messagebroker.plugin.example.PlayerInfoMessage;
 import org.bukkit.configuration.file.YamlConfiguration;
 import org.bukkit.plugin.java.JavaPlugin;
 
 import java.io.File;
 import java.nio.charset.StandardCharsets;
+import java.util.HashSet;
 import java.util.UUID;
 import java.util.concurrent.ThreadLocalRandom;
 
@@ -36,13 +39,19 @@ public class SparrowRedisMessageBrokerPlugin extends JavaPlugin {
     @Override
     public void onEnable() {
         YamlConfiguration yaml = getOrSaveConfig();
-        String redisUri = yaml.getString("uri");
+        String redisUri = yaml.getString("redis-uri");
+        JavaPluginLogger logger = new JavaPluginLogger(this);
         this.messageBroker = MessageBroker.builder()
+                .logger(logger)
+                .serverId(yaml.getString("server-id", "survival_1"))
+                .tags(new HashSet<>(yaml.getStringList("server-tags")))
                 .channel("sparrow:test".getBytes(StandardCharsets.UTF_8))
-                .connection(new PubSubRedisConnection(redisUri, 100_000, new JavaPluginLogger(this)))
+                .connection(new PubSubRedisConnection(redisUri, 100_000, logger))
                 .build();
         this.messageBroker.registry().register(HelloMessage.ID, HelloMessage.CODEC);
         this.messageBroker.registry().register(PlayerInfoMessage.ID, PlayerInfoMessage.CODEC);
+        this.messageBroker.registry().register(PlayerCountRequestMessage.ID, PlayerCountRequestMessage.CODEC);
+        this.messageBroker.registry().register(PlayerCountResponseMessage.ID, PlayerCountResponseMessage.CODEC);
         this.messageBroker.subscribe();
         this.getLogger().info("Connected to Redis");
     }
@@ -56,9 +65,9 @@ public class SparrowRedisMessageBrokerPlugin extends JavaPlugin {
     }
 
     private YamlConfiguration getOrSaveConfig() {
-        File configFile = new File(getDataFolder(), "redis.yml");
+        File configFile = new File(getDataFolder(), "config.yml");
         if (!configFile.exists()) {
-            this.saveResource("redis.yml", false);
+            this.saveResource("config.yml", false);
         }
         return YamlConfiguration.loadConfiguration(configFile);
     }
@@ -78,6 +87,10 @@ public class SparrowRedisMessageBrokerPlugin extends JavaPlugin {
                 .totalMessages(100_000)
                 .warmupMessages(0)
                 .build());
+    }
+
+    public MessageBroker messageBroker() {
+        return messageBroker;
     }
 
     private void logBenchMark(Logger logger, String message) {

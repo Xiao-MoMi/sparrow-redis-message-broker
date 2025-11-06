@@ -1,19 +1,32 @@
 package net.momirealms.sparrow.redis.messagebroker;
 
 import net.momirealms.sparrow.redis.messagebroker.connection.RedisConnection;
+import net.momirealms.sparrow.redis.messagebroker.message.TwoWayRequestMessage;
+import net.momirealms.sparrow.redis.messagebroker.message.TwoWayResponseMessage;
 import net.momirealms.sparrow.redis.messagebroker.registry.DefaultMessageRegistry;
 import net.momirealms.sparrow.redis.messagebroker.registry.RedisMessageRegistry;
 
+import java.util.Collections;
 import java.util.Objects;
+import java.util.Set;
+import java.util.concurrent.CompletableFuture;
 import java.util.function.IntFunction;
 
 public interface MessageBroker {
+
+    String serverId();
+
+    Set<String> tags();
 
     byte[] channel();
 
     RedisMessageRegistry registry();
 
     void publish(RedisMessage message);
+
+    <R extends TwoWayResponseMessage> CompletableFuture<R> publish(TwoWayRequestMessage<R> message, String targetServer);
+
+    void response(TwoWayResponseMessage message);
 
     static Builder builder() {
         return new Builder();
@@ -34,8 +47,16 @@ public interface MessageBroker {
         private byte[] channel;
         private int expectedSize = 16;
         private RedisConnection connection;
+        private String serverId;
+        private Set<String> tags = Collections.emptySet();
+        private Logger logger;
 
         private Builder() {}
+
+        public Builder logger(Logger logger) {
+            this.logger = logger;
+            return this;
+        }
 
         public Builder connection(RedisConnection connection) {
             this.connection = connection;
@@ -57,11 +78,23 @@ public interface MessageBroker {
             return this;
         }
 
+        public Builder serverId(final String serverId) {
+            this.serverId = serverId;
+            return this;
+        }
+
+        public Builder tags(final Set<String> tags) {
+            this.tags = tags;
+            return this;
+        }
+
         public MessageBroker build() {
+            Objects.requireNonNull(this.logger, "logger cannot be null");
             Objects.requireNonNull(this.channel, "channel");
             Objects.requireNonNull(this.registryFunction, "registryFunction");
             Objects.requireNonNull(this.connection, "connection");
-            return new MessageBrokerImpl(this.channel, this.registryFunction.apply(this.expectedSize), this.connection);
+            Objects.requireNonNull(this.serverId, "serverId");
+            return new MessageBrokerImpl(this.logger, this.channel, this.registryFunction.apply(this.expectedSize), this.connection, this.serverId, this.tags);
         }
     }
 }

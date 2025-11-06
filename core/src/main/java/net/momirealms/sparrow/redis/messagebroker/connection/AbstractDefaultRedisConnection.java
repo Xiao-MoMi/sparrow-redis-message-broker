@@ -2,14 +2,18 @@ package net.momirealms.sparrow.redis.messagebroker.connection;
 
 import io.lettuce.core.ClientOptions;
 import io.lettuce.core.RedisClient;
+import io.lettuce.core.RedisFuture;
 import io.lettuce.core.api.StatefulRedisConnection;
 import io.lettuce.core.api.async.RedisAsyncCommands;
 import io.lettuce.core.codec.ByteArrayCodec;
 import net.momirealms.sparrow.redis.messagebroker.Logger;
 
+import java.nio.charset.StandardCharsets;
 import java.util.Objects;
+import java.util.concurrent.CompletableFuture;
 
 public abstract class AbstractDefaultRedisConnection implements RedisConnection {
+    public static final byte[] SELF_INCREASE_MESSAGE_ID = "sparrow:id".getBytes(StandardCharsets.UTF_8);
     protected final Logger logger;
     protected final RedisClient redisClient;
     protected final StatefulRedisConnection<byte[], byte[]> publishConnection;
@@ -39,6 +43,12 @@ public abstract class AbstractDefaultRedisConnection implements RedisConnection 
     @Override
     public boolean isOpen() {
         return this.publishConnection.isOpen();
+    }
+
+    @Override
+    public CompletableFuture<Long> nextMessageId() {
+        RedisFuture<Long> incr = this.asyncPublishCmds.incr(SELF_INCREASE_MESSAGE_ID);
+        return incr.toCompletableFuture();
     }
 
     @Override

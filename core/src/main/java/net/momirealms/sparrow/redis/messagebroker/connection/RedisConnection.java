@@ -1,5 +1,6 @@
 package net.momirealms.sparrow.redis.messagebroker.connection;
 
+import java.util.concurrent.CompletableFuture;
 import java.util.function.Consumer;
 
 public interface RedisConnection {
@@ -13,4 +14,6 @@ public interface RedisConnection {
     void close();
 
     boolean isOpen();
+
+    CompletableFuture<Long> nextMessageId();
 }

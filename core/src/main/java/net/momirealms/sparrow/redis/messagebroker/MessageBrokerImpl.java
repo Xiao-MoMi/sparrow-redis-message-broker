@@ -1,25 +1,57 @@
 package net.momirealms.sparrow.redis.messagebroker;
 
+import com.google.common.cache.Cache;
+import com.google.common.cache.CacheBuilder;
 import io.netty.buffer.ByteBuf;
 import io.netty.buffer.ByteBufAllocator;
 import io.netty.buffer.PooledByteBufAllocator;
 import io.netty.buffer.Unpooled;
 import net.momirealms.sparrow.redis.messagebroker.connection.RedisConnection;
+import net.momirealms.sparrow.redis.messagebroker.message.TwoWayRequestMessage;
+import net.momirealms.sparrow.redis.messagebroker.message.TwoWayResponseMessage;
 import net.momirealms.sparrow.redis.messagebroker.registry.RedisMessageRegistry;
 import net.momirealms.sparrow.redis.messagebroker.registry.RegisteredRedisMessage;
 import net.momirealms.sparrow.redis.messagebroker.util.ByteBufHelper;
 import net.momirealms.sparrow.redis.messagebroker.util.SparrowByteBuf;
 
+import java.util.Map;
+import java.util.Set;
+import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.ThreadLocalRandom;
+import java.util.concurrent.TimeUnit;
+
 final class MessageBrokerImpl implements MessageBroker {
+    private final Logger logger;
     private final ByteBufAllocator allocator = PooledByteBufAllocator.DEFAULT;
     private final byte[] channel;
     private final RedisMessageRegistry registry;
     private final RedisConnection connection;
+    private final String serverId;
+    private final Set<String> tags;
+    private final Cache<Long, TimeStampedFuture<TwoWayResponseMessage>> pendingResponses =
+            CacheBuilder.newBuilder()
+            .expireAfterWrite(1, TimeUnit.MINUTES)
+            .initialCapacity(64)
+            .build();
 
-    public MessageBrokerImpl(byte[] channel, RedisMessageRegistry registry, RedisConnection connection) {
+    public MessageBrokerImpl(Logger logger, byte[] channel, RedisMessageRegistry registry, RedisConnection connection, String serverId, Set<String> tags) {
+        this.logger = logger;
         this.channel = channel;
         this.registry = registry;
         this.connection = connection;
+        this.serverId = serverId;
+        this.tags = tags;
+    }
+
+    @Override
+    public Set<String> tags() {
+        return this.tags;
+    }
+
+    @Override
+    public String serverId() {
+        return this.serverId;
     }
 
     @Override
@@ -41,11 +73,42 @@ final class MessageBrokerImpl implements MessageBroker {
         throw new IllegalStateException("Redis is not connected");
     }
 
+    @SuppressWarnings("unchecked")
+    @Override
+    public <R extends TwoWayResponseMessage> CompletableFuture<R> publish(TwoWayRequestMessage<R> message, String targetServer) {
+        if (this.connection.isOpen()) {
+            CompletableFuture<TwoWayResponseMessage> future = new CompletableFuture<>();
+            TimeStampedFuture<TwoWayResponseMessage> timeStampedFuture = new TimeStampedFuture<>(System.currentTimeMillis(), future);
+            this.connection.nextMessageId().whenComplete((nextId, t) -> {
+                if (t != null) {
+                    this.logger.error("Failed to get next message id", t);
+                    return;
+                }
+                this.pendingResponses.put(nextId, timeStampedFuture);
+                message.setMessageId(nextId);
+                message.setSourceServer(this.serverId);
+                message.setTargetServer(targetServer);
+                this.connection.publish(this.channel, encode(message));
+            });
+            return (CompletableFuture<R>) future;
+        }
+        throw new IllegalStateException("Redis is not connected");
+    }
+
+    @Override
+    public void response(TwoWayResponseMessage message) {
+        TimeStampedFuture<TwoWayResponseMessage> remove = this.pendingResponses.getIfPresent(message.messageId());
+        if (remove != null) {
+            remove.future().complete(message);
+            this.pendingResponses.invalidate(message.messageId());
+        }
+    }
+
     @Override
     public byte[] encode(RedisMessage message) {
-        RegisteredRedisMessage<ByteBuf, RedisMessage> registered = this.registry.byId(message.id());
+        RegisteredRedisMessage<ByteBuf, RedisMessage> registered = this.registry.byId(message.identifier());
         if (registered == null) {
-            throw new IllegalArgumentException("Message with id " + message.id() + " does not exist");
+            throw new IllegalArgumentException("Message with id " + message.identifier() + " does not exist");
         }
 
         ByteBuf buf = null;
@@ -94,7 +157,7 @@ final class MessageBrokerImpl implements MessageBroker {
             this.connection.subscribe(this.channel, (byte[] message) -> {
                 RedisMessage decode = decode(message);
                 if (decode != null) {
-                    decode.executor().execute(decode::handle);
+                    decode.executor().execute(() -> decode.handle(this));
                 }
             });
             return;
