@@ -1,4 +1,4 @@
-package net.momirealms.sparrow.redis.messagebroker;
+package net.momirealms.sparrow.redis.messagebroker.util;
 
 import java.util.concurrent.CompletableFuture;
 
