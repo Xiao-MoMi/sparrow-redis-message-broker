@@ -20,6 +20,10 @@ public abstract class OneWayMessage implements RedisMessage {
         this.targetServer = buf.readUtf8();
     }
 
+    protected void write(SparrowByteBuf buf) {
+        buf.writeUtf8(targetServer);
+    }
+
     public String targetServer() {
         return targetServer;
     }
