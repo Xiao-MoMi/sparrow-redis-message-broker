@@ -11,6 +11,7 @@ import net.momirealms.sparrow.redis.messagebroker.Logger;
 import java.nio.charset.StandardCharsets;
 import java.util.Objects;
 import java.util.concurrent.CompletableFuture;
+import java.util.function.Consumer;
 
 public abstract class AbstractDefaultRedisConnection implements RedisConnection {
     public static final byte[] SELF_INCREASE_MESSAGE_ID = "sparrow:id".getBytes(StandardCharsets.UTF_8);
@@ -20,14 +21,21 @@ public abstract class AbstractDefaultRedisConnection implements RedisConnection 
     protected final RedisAsyncCommands<byte[], byte[]> asyncPublishCmds;
 
     public AbstractDefaultRedisConnection(String redisUri, int queueSize, Logger logger) {
-        this.redisClient = RedisClient.create(redisUri);
-        ClientOptions options = ClientOptions.builder()
-                .autoReconnect(true)
-                .suspendReconnectOnProtocolFailure(false)
-                .requestQueueSize(queueSize)
-                .disconnectedBehavior(ClientOptions.DisconnectedBehavior.ACCEPT_COMMANDS)
-                .build();
-        this.redisClient.setOptions(options);
+        this(createRedisClient(redisUri, queueSize), logger);
+    }
+
+    protected static RedisClient createRedisClient(String redisUri, int queueSize) {
+        return make(RedisClient.create(redisUri),
+                client -> client.setOptions(ClientOptions.builder()
+                        .autoReconnect(true)
+                        .suspendReconnectOnProtocolFailure(false)
+                        .requestQueueSize(queueSize)
+                        .disconnectedBehavior(ClientOptions.DisconnectedBehavior.ACCEPT_COMMANDS).build())
+        );
+    }
+
+    public AbstractDefaultRedisConnection(RedisClient redisClient, Logger logger) {
+        this.redisClient = redisClient;
         this.publishConnection = this.redisClient.connect(new ByteArrayCodec());
         this.asyncPublishCmds = this.publishConnection.async();
         this.logger = logger;
@@ -55,5 +63,10 @@ public abstract class AbstractDefaultRedisConnection implements RedisConnection 
     public void close() {
         this.publishConnection.close();
         this.redisClient.shutdown();
+    }
+
+    private static <T> T make(T obj, Consumer<T> function) {
+        function.accept(obj);
+        return obj;
     }
 }

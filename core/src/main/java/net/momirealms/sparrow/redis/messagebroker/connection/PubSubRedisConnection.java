@@ -1,5 +1,6 @@
 package net.momirealms.sparrow.redis.messagebroker.connection;
 
+import io.lettuce.core.RedisClient;
 import io.lettuce.core.codec.ByteArrayCodec;
 import io.lettuce.core.pubsub.RedisPubSubListener;
 import io.lettuce.core.pubsub.StatefulRedisPubSubConnection;
@@ -18,7 +19,11 @@ public class PubSubRedisConnection extends AbstractDefaultRedisConnection {
     private final Map<String, Consumer<byte[]>> channelListeners;
 
     public PubSubRedisConnection(String redisUri, int queueSize, Logger logger) {
-        super(redisUri, queueSize, logger);
+        this(AbstractDefaultRedisConnection.createRedisClient(redisUri, queueSize), logger);
+    }
+
+    public PubSubRedisConnection(RedisClient redisClient, Logger logger) {
+        super(redisClient, logger);
         this.subscribeConnection = super.redisClient.connectPubSub(new ByteArrayCodec());
         this.syncSubscribeCmds = this.subscribeConnection.sync();
         this.channelListeners = new ConcurrentHashMap<>();
