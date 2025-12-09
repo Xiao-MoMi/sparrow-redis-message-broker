@@ -7,6 +7,8 @@ import net.momirealms.sparrow.redis.messagebroker.util.SparrowByteBuf;
 import org.bukkit.Bukkit;
 import org.jetbrains.annotations.NotNull;
 
+import java.util.concurrent.CompletableFuture;
+
 public class PlayerCountRequestMessage extends TwoWayRequestMessage<PlayerCountResponseMessage> {
     public static final MessageCodec<SparrowByteBuf, PlayerCountRequestMessage> CODEC = MessageCodec.ofMember(PlayerCountRequestMessage::write, PlayerCountRequestMessage::new);
     public static final MessageIdentifier ID = MessageIdentifier.of("sparrow", "player_count_request");
@@ -19,8 +21,8 @@ public class PlayerCountRequestMessage extends TwoWayRequestMessage<PlayerCountR
     }
 
     @Override
-    protected @NotNull PlayerCountResponseMessage handleRequest() {
-        return new PlayerCountResponseMessage(Bukkit.getOnlinePlayers().size());
+    protected @NotNull CompletableFuture<PlayerCountResponseMessage> handleRequest() {
+        return CompletableFuture.completedFuture(new PlayerCountResponseMessage(Bukkit.getOnlinePlayers().size()));
     }
 
     @Override

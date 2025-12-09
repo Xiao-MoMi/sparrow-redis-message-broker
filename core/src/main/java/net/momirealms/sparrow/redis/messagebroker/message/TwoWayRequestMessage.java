@@ -5,6 +5,8 @@ import net.momirealms.sparrow.redis.messagebroker.RedisMessage;
 import net.momirealms.sparrow.redis.messagebroker.util.SparrowByteBuf;
 import org.jetbrains.annotations.NotNull;
 
+import java.util.concurrent.CompletableFuture;
+
 /**
  * 一对一消息发送与响应
  */
@@ -55,11 +57,14 @@ public abstract class TwoWayRequestMessage<R extends TwoWayResponseMessage> impl
     @Override
     public void handle(MessageBroker broker) {
         if (broker.serverId().equals(this.targetServer)) {
-            R responseMessage = handleRequest();
-            responseMessage.messageId = this.messageId;
-            responseMessage.sourceServer = this.targetServer;
-            responseMessage.targetServer = this.sourceServer;
-            broker.publish(responseMessage);
+            handleRequest().thenAccept(response -> {
+                if (response != null) {
+                    response.messageId = this.messageId;
+                    response.sourceServer = this.targetServer;
+                    response.targetServer = this.sourceServer;
+                    broker.publish(response);
+                }
+            });
         }
     }
 
@@ -69,5 +74,5 @@ public abstract class TwoWayRequestMessage<R extends TwoWayResponseMessage> impl
      * @return 响应的消息
      */
     @NotNull
-    protected abstract R handleRequest();
+    protected abstract CompletableFuture<R> handleRequest();
 }
