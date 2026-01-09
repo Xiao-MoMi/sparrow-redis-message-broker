@@ -6,7 +6,6 @@ import io.lettuce.core.RedisFuture;
 import io.lettuce.core.api.StatefulRedisConnection;
 import io.lettuce.core.api.async.RedisAsyncCommands;
 import io.lettuce.core.codec.ByteArrayCodec;
-import net.momirealms.sparrow.redis.messagebroker.Logger;
 
 import java.nio.charset.StandardCharsets;
 import java.util.Objects;
@@ -15,13 +14,12 @@ import java.util.function.Consumer;
 
 public abstract class AbstractDefaultRedisConnection implements RedisConnection {
     public static final byte[] SELF_INCREASE_MESSAGE_ID = "sparrow:id".getBytes(StandardCharsets.UTF_8);
-    protected final Logger logger;
     protected final RedisClient redisClient;
     protected final StatefulRedisConnection<byte[], byte[]> publishConnection;
     protected final RedisAsyncCommands<byte[], byte[]> asyncPublishCmds;
 
-    public AbstractDefaultRedisConnection(String redisUri, int queueSize, Logger logger) {
-        this(createRedisClient(redisUri, queueSize), logger);
+    public AbstractDefaultRedisConnection(String redisUri, int queueSize) {
+        this(createRedisClient(redisUri, queueSize));
     }
 
     protected static RedisClient createRedisClient(String redisUri, int queueSize) {
@@ -34,11 +32,10 @@ public abstract class AbstractDefaultRedisConnection implements RedisConnection 
         );
     }
 
-    public AbstractDefaultRedisConnection(RedisClient redisClient, Logger logger) {
+    public AbstractDefaultRedisConnection(RedisClient redisClient) {
         this.redisClient = redisClient;
         this.publishConnection = this.redisClient.connect(new ByteArrayCodec());
         this.asyncPublishCmds = this.publishConnection.async();
-        this.logger = logger;
     }
 
     protected void validateChannelAndMessage(byte[] channel, byte[] message) {
@@ -61,8 +58,9 @@ public abstract class AbstractDefaultRedisConnection implements RedisConnection 
 
     @Override
     public void close() {
-        this.publishConnection.close();
-        this.redisClient.shutdown();
+        if (this.publishConnection != null && this.publishConnection.isOpen()) {
+            this.publishConnection.close();
+        }
     }
 
     private static <T> T make(T obj, Consumer<T> function) {

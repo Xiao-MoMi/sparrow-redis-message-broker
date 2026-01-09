@@ -46,7 +46,7 @@ public class SparrowRedisMessageBrokerPlugin extends JavaPlugin {
                 .serverId(yaml.getString("server-id", "survival_1"))
                 .tags(new HashSet<>(yaml.getStringList("server-tags")))
                 .channel("sparrow:test".getBytes(StandardCharsets.UTF_8))
-                .connection(new PubSubRedisConnection(redisUri, 100_000, logger))
+                .connection(new PubSubRedisConnection(redisUri, 100_000))
                 .build();
         this.messageBroker.registry().register(HelloMessage.ID, HelloMessage.CODEC);
         this.messageBroker.registry().register(PlayerInfoMessage.ID, PlayerInfoMessage.CODEC);

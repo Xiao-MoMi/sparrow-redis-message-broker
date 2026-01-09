@@ -5,8 +5,9 @@ import io.lettuce.core.codec.ByteArrayCodec;
 import io.lettuce.core.pubsub.RedisPubSubListener;
 import io.lettuce.core.pubsub.StatefulRedisPubSubConnection;
 import io.lettuce.core.pubsub.api.sync.RedisPubSubCommands;
-import net.momirealms.sparrow.redis.messagebroker.Logger;
 import net.momirealms.sparrow.redis.messagebroker.RedisMessageExecutionException;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import java.nio.charset.StandardCharsets;
 import java.util.Map;
@@ -14,16 +15,17 @@ import java.util.concurrent.ConcurrentHashMap;
 import java.util.function.Consumer;
 
 public class PubSubRedisConnection extends AbstractDefaultRedisConnection {
+    private static final Logger LOGGER = LoggerFactory.getLogger(PubSubRedisConnection.class);
     private final StatefulRedisPubSubConnection<byte[], byte[]> subscribeConnection;
     private final RedisPubSubCommands<byte[], byte[]> syncSubscribeCmds;
     private final Map<String, Consumer<byte[]>> channelListeners;
 
-    public PubSubRedisConnection(String redisUri, int queueSize, Logger logger) {
-        this(AbstractDefaultRedisConnection.createRedisClient(redisUri, queueSize), logger);
+    public PubSubRedisConnection(String redisUri, int queueSize) {
+        this(AbstractDefaultRedisConnection.createRedisClient(redisUri, queueSize));
     }
 
-    public PubSubRedisConnection(RedisClient redisClient, Logger logger) {
-        super(redisClient, logger);
+    public PubSubRedisConnection(RedisClient redisClient) {
+        super(redisClient);
         this.subscribeConnection = super.redisClient.connectPubSub(new ByteArrayCodec());
         this.syncSubscribeCmds = this.subscribeConnection.sync();
         this.channelListeners = new ConcurrentHashMap<>();
@@ -75,19 +77,11 @@ public class PubSubRedisConnection extends AbstractDefaultRedisConnection {
 
     @Override
     public void close() {
-        try {
-            if (this.subscribeConnection != null) {
-                this.subscribeConnection.close();
-            }
-            if (this.redisClient != null) {
-                this.redisClient.close();
-            }
-            this.channelListeners.clear();
-            super.close();
-            this.logger.info("Redis PubSub connection closed successfully");
-        } catch (Exception e) {
-            this.logger.error("Error closing Redis PubSub connection", e);
+        if (this.subscribeConnection != null) {
+            this.subscribeConnection.close();
         }
+        this.channelListeners.clear();
+        super.close();
     }
 
     public int getActiveChannelCount() {
@@ -110,9 +104,9 @@ public class PubSubRedisConnection extends AbstractDefaultRedisConnection {
                     try {
                         listener.accept(message);
                     } catch (RedisMessageExecutionException e) {
-                        PubSubRedisConnection.this.logger.error("Error processing channel message", e.getCause());
-                    } catch (Exception e) {
-                        PubSubRedisConnection.this.logger.error("Error processing channel message", e);
+                        LOGGER.error("Error processing channel message", e.getCause());
+                    } catch (Throwable e) {
+                        LOGGER.error("Error processing channel message", e);
                     }
                 }
             }
