@@ -93,10 +93,11 @@ public interface MessageBroker {
 
         public MessageBroker build() {
             Objects.requireNonNull(this.logger, "logger cannot be null");
-            Objects.requireNonNull(this.channel, "channel");
-            Objects.requireNonNull(this.registryFunction, "registryFunction");
-            Objects.requireNonNull(this.connection, "connection");
-            Objects.requireNonNull(this.serverId, "serverId");
+            Objects.requireNonNull(this.channel, "channel cannot be null");
+            Objects.requireNonNull(this.registryFunction, "registry function cannot be null");
+            Objects.requireNonNull(this.connection, "connection cannot be null");
+            Objects.requireNonNull(this.serverId, "server id cannot be null");
+            Objects.requireNonNull(this.tags, "server tags cannot be null");
             return new MessageBrokerImpl(this.logger, this.channel, this.registryFunction.apply(this.expectedSize), this.connection, this.serverId, this.tags);
         }
     }
